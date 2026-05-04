@@ -1,8 +1,8 @@
 terraform {
   backend "s3" {
-    bucket = "dvh-terraform-tutorial"
+    bucket = "hesam.herts.ac"
     key    = "build/airflow/terraform.tfstate"
-    region = "eu-west-2"
+    region = "eu-west-1"
   }
 
   required_providers {
@@ -13,6 +13,6 @@ terraform {
   }
 }
 # Configure the AWS Provider
-provider "aws" {
-  region = var.region
-}
+#provider "aws" {
+#  region = var.region
+#}
