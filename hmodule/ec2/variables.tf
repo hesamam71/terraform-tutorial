@@ -16,3 +16,8 @@ variable "Created_By" {
 
   default = "terraform"
 }
+
+variable "key_name" {
+
+#  default = "key-1"
+}

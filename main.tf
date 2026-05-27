@@ -3,6 +3,7 @@ module "ec2_hesam" {
   source = "./hmodule/ec2"
 
   instance_name = "v011"
+  key_name      = "key-1"
 }
 
 module "ec2_hesam2" {
@@ -10,6 +11,7 @@ module "ec2_hesam2" {
   source = "./hmodule/ec2"
 
   instance_name = "v011_2"
+  key_name      = "key-1"
 }
 
 #resource "aws_instance" "hesam-1" {
