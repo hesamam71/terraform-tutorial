@@ -1,0 +1,15 @@
+---
+  - name: install and configure apache
+    hosts: all
+    tasks:
+      - name: make sure the node is reachable
+        ping:
+      - name: install apache
+        become: true
+        apt:
+          name: "{{ item }}"
+          state: absent
+          update_cache: yes
+        with_items:
+          - apache2
+          - apache2-utils

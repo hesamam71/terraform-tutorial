@@ -1,0 +1,144 @@
+---
+  - name: install and configure apache
+    hosts: all
+    become: true
+    vars:
+      mysql_wp_db: "wordpress"
+      mysql_wp_pass: "wp"
+    tasks:
+      - name: make sure the node is reachable
+        ping:
+      - name: install apache
+        apt:
+          name:
+            - apache2
+            - apache2-utils
+            - php
+            - php-fpm
+            - php-mysql
+            - libapache2-mod-php
+            - php-common
+            - php-zip
+            - php-curl
+            - php-xmlrpc
+            - php-gd
+            - php-mbstring
+            - php-xml
+            - php-soap
+            - php-init
+            - mysql-server
+            - mysql-client
+            - python3-mysqldb
+            - python-pip
+          state: present
+          update_cache: yes
+        notify: making sure apache2 is running
+    rescue:
+      - name: print when errors
+        debug:
+          msg: "I have an error"
+        tags:
+          - download-packages
+          - download
+        when: ansible_os_family == "Debian"
+      - name: making sure apache2 is running
+        service:
+          name: apache2
+          state: started
+          enabled: true 
+
+
+          #configure DB
+      - name: making sure anon user doesnt exists
+        mysql_user:
+          login_user: root
+          login_password: ""
+          user: ""
+          state: absent
+      - name: making sure root user can login locally
+        mysql_user:
+          login_user: root
+          login_password: ""
+          user: ""
+          hosts: "{{ item }}"
+        with_items:
+          - 127.0.0.1
+          - localhost
+          - ""
+          - ::1
+
+
+          #creating DB For WP
+
+      - name: creating DB for WP
+        mysql_db:
+          name: "{{ mysql_wp_db }}"
+          state: present
+        # register: wp_db_created
+      - name: generate a random password 
+        command: openssl rand -hex 7
+        register: mysql_wp_pass
+        # when: wp_db_created
+      - name: creating a mysql user for wp
+        mysql_user:
+          login_user: "{{ mysql_wp_user }}"
+          login_password: ""
+          user: wp
+          password: "{{ mysql_wp_pass.stdout }}"
+          priv: "{{ mysql_wp_db }}".*:ALL
+        # when : mysql_wp_pass.changed
+      - name: print the wp mysql password
+        debug:
+          msg: "the pass is : {{ mysql_wp_pass.stdout }}"
+          # when: mysql_wp_pass.changed
+
+
+          # install wp
+
+      - name: download wordpress tarbal 
+        unarchive:
+          src: http://wordpress.org/latest.tar.gz
+          dest: /var/www/
+          remote_src: true
+        tags:
+          - download-wp
+          - download
+      - name: modify apache default website configure
+        lineinfile:
+          path: "/etc/apache2/sites_available/000-default.conf"
+          regexp: '(.)+DocumentRoot /var/www/html'
+          line: 'DocumentRoot /var/www/wordpress'
+          state: present
+        tags: 
+          - modify-something
+        notify: restart apache2
+      - name: copy config file
+        copy:
+          src:  /var/www/wordpress/wp-config-sample.php
+          dest: /var/www/wordpress/wp-config.php
+          remote_src: yes
+        tags:
+          - set-wp-configs
+      - name: setup configuration
+        lineinfile:
+          path: /var/www/wordpress/wp-config.php
+          regexp: "{{ item.regex }}"
+          line: "{{ item.value }}"
+        with_items:
+          - { 'regex':"define\\( 'DB_NAME', 'database_name_here' \\)", 'value':"define( 'DB_NAME', '{{ mysql_wp_db }}' );" }
+          - { 'regex':"define\\( 'DB_NAME', 'database_name_here' \\)", 'value':"define( 'DB_USER', '{{ mysql_wp_user }}' );" }
+          - { 'regex':"define\\( 'DB_NAME', 'database_name_here' \\)", 'value':"define( 'DB_PASSWORD', '{{ mysql_wp_pass.stdout }}' );" }
+      - name: set wordpress user ownership
+        file:
+          path: /var/www/wordpress/
+          state: directory
+          recurse: yes
+          owner: www-data
+        tags:
+          - set-wp-configs
+          - set-wp-permissions
+    handelers:
+      - name: restart apache 
+        service:
+          name: apache2
+          state: restarted
